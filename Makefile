@@ -1,6 +1,11 @@
+.PHONY:	open
+open:
+	$(MAKE) dc.pdf
+	evince dc.pdf &
 
 dc.pdf:	dc.saty patches
-	eval `opam env` && satysfi dc.saty
+	eval `opam env` && satysfi dc.saty &> dc.out || cat dc.out | (tail -n 10 1>&2 && false)
+	rm dc.out
 
 dc.d:	dc.saty
 	eval `opam env` && SATYROGRAPHOS_EXPERIMENTAL=1 satyrographos util deps-make dc.saty > $@
