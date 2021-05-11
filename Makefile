@@ -1,10 +1,11 @@
--include: dc.d
 
-dc.pdf:	dc.saty
-	eval $(opam env) && satysfi dc.saty
+dc.pdf:	dc.saty patches
+	eval `opam env` && satysfi dc.saty
 
 dc.d:	dc.saty
-	eval $(opam env) && SATYROGRAPHOS_EXPERIMENTAL=1 satyrographos util deps-make dc.saty
+	eval `opam env` && SATYROGRAPHOS_EXPERIMENTAL=1 satyrographos util deps-make dc.saty > $@
+
+-include: dc.d
 
 patches:
 	mkdir -p patches
