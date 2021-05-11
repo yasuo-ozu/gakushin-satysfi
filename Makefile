@@ -32,3 +32,5 @@ clean:
 distclean:
 	@$(MAKE) clean
 	rm -rf dc.pdf
+
+-include: include.mk
