@@ -15,7 +15,7 @@
 
 module GakushinClass : sig
 
-    val document : block-text -> block-text -> block-text -> block-text -> block-text -> block-text -> block-text -> document
+    val document : inline-text -> block-text -> block-text -> block-text -> block-text -> block-text -> block-text -> block-text -> document
 
     val font-latin-roman  : string * float * float
     val font-latin-italic : string * float * float
@@ -248,7 +248,7 @@ end = struct
         let n = round (w /' wdot) in
         inline-fil ++ (repeat-inline n ib)
 
-    let document bt1 bt2 bt3 bt4-1 bt4-2 bt5-1 bt5-2 =
+    let document name bt1 bt2 bt3 bt4-1 bt4-2 bt5-1 bt5-2 =
         let page = A4Paper in
         let txtorg = (16.2mm, 19mm) in
         let txtwid = 177.6mm in
@@ -331,11 +331,11 @@ end = struct
         in
         let pagepartsf pbinfo =
             let pageno = pbinfo#page-number in
+            let ctx =
+                get-standard-context hdrwid
+                    |> set-paragraph-margin 0pt 0pt
+            in
             let header =
-                let ctx =
-                    get-standard-context hdrwid
-                        |> set-paragraph-margin 0pt 0pt
-                in
                 let ctx-top-comment = ctx |> set-font-size 10.5pt in
                 let ctx-comment = ctx |> set-font-size 8pt in
                 let ib = match pageno with
@@ -346,11 +346,20 @@ end = struct
                 in
                 form-paragraph ctx ib
             in
+            let footer-box-inner = read-inline ctx {申請者登録名　#name;　} in
+            let (fw, fh, fd) = get-natural-metrics footer-box-inner in
+            let footer-skip = 1.5cm in
+            let footer-box = inline-graphics 0pt fh fd (fun (x, y) -> (
+                [
+                    draw-text (x +' footer-skip, y) footer-box-inner;
+                    Gr.line (x +' footer-skip, y -' fd) (x +' footer-skip +' fw, y -' fd) |> stroke 1pt (Color.black)
+                ]
+            )) in
             let footer =
                 let ctx = get-standard-context ftrwid in
                 let it-pageno = embed-string (arabic (pbinfo#page-number + 2)) in
                 line-break true true ctx
-                    (inline-fil ++ (read-inline ctx {– #it-pageno; –}) ++ inline-fil)
+                    (inline-fil ++ (read-inline ctx {– #it-pageno; –}) ++ footer-box ++ inline-fil)
             in
             (|
                 header-origin  = hdrorg;

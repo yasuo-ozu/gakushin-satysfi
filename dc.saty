@@ -1,5 +1,5 @@
 @import: gakushin
-GakushinClass.document '<
+GakushinClass.document {山田　太郎} '<
     +p {
         研究計画　(1)研究の位置づけ
     }
