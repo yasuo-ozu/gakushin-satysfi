@@ -113,13 +113,13 @@ end = struct
         let tag = `fig:` ^ r in
         read-inline ctx {図\ref(tag);}
 
-    let font-size-section = 18pt
-    let font-size-subsection = 16pt
+    let font-size-main = 13pt
+    let font-size-section = font-size-main
+    let font-size-subsection = font-size-main
+    let leading-main = 18pt
 
-    let section-top-margin = 20pt
-    let section-bottom-margin = 12pt
-    let title-line-margin = 4pt
-    let title-line-thickness = 1pt
+    let section-top-margin = 0pt
+    let section-bottom-margin = 0pt
 
     let font-ratio-latin = 1.
     let font-ratio-cjk = 0.88
@@ -163,11 +163,14 @@ end = struct
             |> set-font Latin          font-latin-roman
             |> set-math-font `lmodern`
             |> set-hyphen-penalty 100
+            |> set-leading leading-main % 14
+            |> set-paragraph-margin 5pt 5pt
 
 
     let-mutable ref-figure <- 0
 
     let-mutable num-chapter <- 0
+    let-mutable num-subchap <- 0
     let-mutable num-section <- 0
     let-mutable num-subsection <- 0
     let-mutable num-theorems <- 0
@@ -189,8 +192,9 @@ end = struct
                   let d (_, _) _ _ _ = [] in (d, d, d, d)
         in
         block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) ds (fun ctx -> (
+            let ctx-cap = set-font-size 9pt ctx in
             read-block ctx inner
-                +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#it-num; #caption;} ++ inline-fil)
+                +++ line-break true true ctx (inline-fil ++ read-inline ctx-cap {図#it-num; #caption;} ++ inline-fil)
         ))
 
     let make-section-title ctx =
@@ -246,11 +250,11 @@ end = struct
 
     let document bt1 bt2 bt3 bt4-1 bt4-2 bt5-1 bt5-2 =
         let page = A4Paper in
-        let txtorg = (16mm, 20mm) in
-        let txtwid = 178mm in
-        let txthgt = 264mm in
-        let hdrorg = (16mm, 16mm) in
-        let ftrorg = (16mm, 284mm) in
+        let txtorg = (16.2mm, 19mm) in
+        let txtwid = 177.6mm in
+        let txthgt = 297mm -' 19mm -' 19mm in
+        let hdrorg = (16.2mm, 15mm) in
+        let ftrorg = (16.2mm, 297mm -' 19mm) in
         let hdrwid = txtwid in
         let ftrwid = txtwid in
 
@@ -258,25 +262,35 @@ end = struct
             FootnoteScheme.initialize ()
         in
 
-        let ctx-doc = get-standard-context txtwid |> set-font-size 11pt in
+        let ctx-doc = get-standard-context txtwid |> set-font-size font-size-main in
 
         let make-topic num it =
             let it-num = embed-string (arabic num) in
-            let ib = read-inline ctx-doc { \font-style[FssStyle.bold]{(#it-num;) #it;} } in
-            form-paragraph ctx-doc ib
+            let ctx-topic = set-font-size 10.5pt ctx-doc in
+            let ib = read-inline ctx-topic { \font-style[FssStyle.bold]{(#it-num;) #it;} } in
+            form-paragraph ctx-topic ib
         in
 
-        let () = num-chapter <- 1 in
+        let reset-numbers num sub =
+            let () = num-chapter <- num in
+            let () = num-subchap <- sub in
+            let () = num-section <- 0 in
+            num-subsection <- 0
+        in
+
+        let () = reset-numbers 2 1 in
         let bb-main-1-ib = read-block ctx-doc bt1 in
-        let () = num-chapter <- 2 in
+        let () = reset-numbers 2 2 in
         let bb-main-2-ib = read-block ctx-doc bt2 in
-        let () = num-chapter <- 3 in
+        let () = reset-numbers 3 0 in
         let bb-main-3-ib = read-block ctx-doc bt3 in
-        let () = num-chapter <- 4 in
+        let () = reset-numbers 4 1 in
         let bb-main-4-ib-1 = read-block ctx-doc bt4-1 in
+        let () = reset-numbers 4 2 in
         let bb-main-4-ib-2 = read-block ctx-doc bt4-2 in
-        let () = num-chapter <- 5 in
+        let () = reset-numbers 5 1 in
         let bb-main-5-ib-1 = read-block ctx-doc bt5-1 in
+        let () = reset-numbers 5 2 in
         let bb-main-5-ib-2 = read-block ctx-doc bt5-2 in
 
         let insert-header num =
@@ -322,9 +336,10 @@ end = struct
                     get-standard-context hdrwid
                         |> set-paragraph-margin 0pt 0pt
                 in
+                let ctx-top-comment = ctx |> set-font-size 10.5pt in
                 let ctx-comment = ctx |> set-font-size 8pt in
                 let ib = match pageno with
-                | 1 -> inline-fil ++ (read-inline ctx {(DC 申請内容ファイル)})
+                | 1 -> inline-fil ++ (read-inline ctx-top-comment {(DC 申請内容ファイル)})
                 | 3 -> (read-inline ctx-comment {(研究目的・内容等の続き)})
                 | 6 -> (read-inline ctx-comment {(研究遂行力の自己分析の続き)})
                 | _ -> inline-nil
@@ -381,14 +396,38 @@ end = struct
         let bb-inner = read-block ctx inner in
         bb-title +++ bb-inner
 
+    let make-number-decoration ctx color-b color-f it =
+        let ctx = set-text-color color-f ctx in
+        let ib = read-inline ctx it in
+        let (w, h, d) = get-natural-metrics ib in
+        let outset = (get-font-size ctx) *' 0.25 in
+        let overhang = (get-font-size ctx) *' 0.2 in
+        let underhang = (get-font-size ctx) *' 0.4 in
+        inline-graphics (w +' outset) (h +' outset) (d +' outset) (fun (x, y) -> 
+            [
+                fill color-b (
+                    start-path (x -' outset, y -' d -' outset)
+                        |> line-to (x +' w +' outset +' overhang, y -' d -' outset)
+                        |> line-to (x +' w +' outset -' underhang, y +' h +' outset)
+                        |> line-to (x -' outset, y +' h +' outset)
+                        |> close-with-line
+                );
+                draw-text (x, y) ib;
+            ]
+        )
+
     let section-scheme ctx label title outline-title-opt inner =
         let ctx-title = make-section-title ctx in
         let () = increment num-section in
         let () = num-subsection <- 0 in
-        let s-num = arabic (!num-chapter) ^ `.` ^ arabic (!num-section) in
+        let s-num = if !num-subchap == 0 then
+                arabic (!num-chapter) ^ `.` ^ arabic (!num-section)
+            else
+                arabic (!num-chapter) ^ `-(` ^ (arabic !num-subchap) ^ `).` ^ arabic (!num-section)
+        in
         let () = register-cross-reference (label ^ `:num`) s-num in
         let ib-num =
-            read-inline ctx-title (embed-string (s-num ^ `.`))
+            make-number-decoration ctx-title (RGB(0.2,0.2,0.2)) Color.white (embed-string (s-num ^ `.`))
                 ++ hook-page-break (fun pbinfo _ -> (
                     let pageno = pbinfo#page-number in
                     register-cross-reference (label ^ `:page`) (arabic pageno)))
@@ -399,21 +438,26 @@ end = struct
         let bb-title =
             let ib =
                 inline-frame-breakable no-pads (Annot.register-location-frame label)
-                    (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+                    (ib-num ++ (inline-skip 5pt) ++ ib-title ++ (inline-fil))
             in
             section-heading ctx ib
         in
         let bb-inner = read-block ctx inner in
-        bb-title +++ bb-inner
+        block-skip 5pt +++ bb-title +++ bb-inner
 
 
     let subsection-scheme ctx label title outline-title-opt inner =
         let () = num-subsection <- !num-subsection + 1 in
-        let s-num = arabic (!num-chapter) ^ `.` ^ arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
+        let s-num = if !num-subchap == 0 then
+                arabic (!num-chapter) ^ `.` ^ arabic (!num-section)
+            else
+                arabic (!num-chapter) ^ `-(` ^ (arabic !num-subchap) ^ `).` ^ arabic (!num-section)
+        in
+        let s-num = s-num ^ `.` ^ arabic (!num-subsection) in
         let () = register-cross-reference (label ^ `:num`) s-num in
         let ctx-title = make-subsection-title ctx in
         let ib-num =
-            read-inline ctx-title (embed-string (s-num ^ `.`))
+            make-number-decoration ctx-title (RGB(0.8,0.8,0.8)) Color.black (embed-string (s-num ^ `.`))
                 ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
         in
         let ib-title = read-inline ctx-title title in
@@ -422,10 +466,10 @@ end = struct
         let bb-title =
             line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
                 (inline-frame-breakable no-pads (Annot.register-location-frame label)
-                    (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
+                    (ib-num ++ (inline-skip 5pt) ++ ib-title ++ (inline-fil)))
         in
         let bb-inner = read-block ctx inner in
-        bb-title +++ bb-inner
+        block-skip 5pt +++ bb-title +++ bb-inner
 
 
     let-block ctx +section ?:labelopt ?:outline-title-opt title inner =
